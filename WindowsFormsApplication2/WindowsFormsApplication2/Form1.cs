@@ -14,21 +14,15 @@ namespace WindowsFormsApplication2
         private bool flag = false;
         public bool IsPaused { get; set; }
         public static PictureBox CurrentConditionBox { get; set; }
-        public static PictureBox NextConditionBox { get; set; }
         public static TextBox CurrentSpentTime { get; set; }
-        public static TextBox NextSpentTime { get; set; }
         public static TextBox CurrentLowerBound { get; set; }
-        public static TextBox NextLowerBound { get; set; }
         public static TextBox BestTime { get; set; }
         public Form1()
         {
             InitializeComponent();
             CurrentConditionBox = pictureBox1;
-            NextConditionBox = pictureBox2;
             CurrentSpentTime = currentSpentTime;
-            NextSpentTime = nextSpentTime;
             CurrentLowerBound = currentLowerBound;
-            NextLowerBound = nextLowerBound;
             BestTime = bestTime;
             IsPaused = true;
         }
@@ -50,8 +44,8 @@ namespace WindowsFormsApplication2
                     MessageBox.Show("Input data error!");
                     return;
                 }
-                
-                Algorithm.InitializeOutput("output.txt", pictureBox1, pictureBox2);
+
+                Algorithm.InitializeOutput("output.txt", pictureBox1);
                 DrawingHelper.ConditionQueue.Clear();
                 DrawingHelper.IsCurrentConditionQueue.Clear();
                 int ans = Algorithm.GetAnswer(Data.FileData);
@@ -60,7 +54,7 @@ namespace WindowsFormsApplication2
                 Algorithm.WriteAnswer(ans);
             }
         }
-    
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             DrawingHelper.Draw();
@@ -107,8 +101,8 @@ namespace WindowsFormsApplication2
                     firstIndexFromNextLine = richTextBox1.GetCharIndexFromPosition(pt);
                     firstIndexFromNextLine += 1;
                 }
-                if(i!=lastLine)
-                    lines.Add(richTextBox1.Text.Substring(firstIndexFromLine, firstIndexFromNextLine - firstIndexFromLine-1));
+                if (i != lastLine)
+                    lines.Add(richTextBox1.Text.Substring(firstIndexFromLine, firstIndexFromNextLine - firstIndexFromLine - 1));
                 else
                     lines.Add(richTextBox1.Text.Substring(firstIndexFromLine, firstIndexFromNextLine - firstIndexFromLine));
             }
@@ -130,7 +124,7 @@ namespace WindowsFormsApplication2
                 MessageBox.Show("Input data error!");
                 return;
             }
-            Algorithm.InitializeOutput("output.txt", pictureBox1, pictureBox2);
+            Algorithm.InitializeOutput("output.txt", pictureBox1);
             DrawingHelper.ConditionQueue.Clear();
             DrawingHelper.IsCurrentConditionQueue.Clear();
             int ans = Algorithm.GetAnswer(Data.FileData);
@@ -161,10 +155,10 @@ namespace WindowsFormsApplication2
                 for (var i = 0; i < data.NumberOfJobs; i++)
                 {
                     var job = sr.ReadLine();
-                    data.Jobs[i] = new Job(job,data.NumberOfMachines);
+                    data.Jobs[i] = new Job(job, data.NumberOfMachines);
                 }
                 FileData = data;
-                
+
             }
             catch (Exception)
             {
@@ -178,7 +172,7 @@ namespace WindowsFormsApplication2
     }
     class Job
     {
-        public Job(string jobString,int nom)
+        public Job(string jobString, int nom)
         {
 
             var operations = jobString.Split(' ');
@@ -189,7 +183,7 @@ namespace WindowsFormsApplication2
             {
                 var machine = int.Parse(operations[2 * i - 1]);
                 var duration = int.Parse(operations[2 * i]);
-                if(machine>nom) 
+                if (machine > nom)
                     throw new InputException();
                 jobTime += duration;
                 Operations[i - 1] = new Operation(machine, duration);
@@ -206,7 +200,7 @@ namespace WindowsFormsApplication2
                     t++;
                 }
             }
-       
+
         }
 
         public int NumberOfOperations { get; set; }
@@ -261,8 +255,7 @@ namespace WindowsFormsApplication2
     {
         public static StreamWriter ReleaseStreamWriter { get; set; }
         public static PictureBox CurrentConditionBox { get; set; }
-        public static PictureBox NextConditionBox { get; set; }
- 
+
         public static void WriteAnswer(int answer)
         {
             ReleaseStreamWriter.WriteLine(answer);
@@ -278,8 +271,8 @@ namespace WindowsFormsApplication2
 
             for (var i = 0; i < data.NumberOfJobs; i++)
                 for (var j = 0; j < data.Jobs[i].NumberOfOperations; j++)
-                        fullTimeOnMachine[data.Jobs[i].Operations[j].Machine] += data.Jobs[i].Operations[j].Duration;
-        
+                    fullTimeOnMachine[data.Jobs[i].Operations[j].Machine] += data.Jobs[i].Operations[j].Duration;
+
 
             var dj = new int[data.NumberOfJobs];
             for (var i = 0; i < data.NumberOfJobs; i++)
@@ -293,7 +286,7 @@ namespace WindowsFormsApplication2
 
             var queue = new Queue<Condition>();
             var condition = new Condition(dj, dm, 0, Int32.MaxValue, 0);
-            
+
             queue.Enqueue(condition);
             var bestUpperBound = Int32.MaxValue;
 
@@ -361,13 +354,13 @@ namespace WindowsFormsApplication2
                 queue.Dequeue();
             }
             int t = 0;
-            return 1/t;
+            return 1 / t;
         }
 
         private static int GetLowerBound(Condition cond, Job[] jobs, int[] fullTimeOnMachine)
         {
             var ans = cond.DoneInJob.Select((t, i) => jobs[i].FullTime - t).Max();
-            ans = fullTimeOnMachine.Select((t, i) => t - cond.DoneOnMachine[i]).Concat(new[] {ans}).Max();
+            ans = fullTimeOnMachine.Select((t, i) => t - cond.DoneOnMachine[i]).Concat(new[] { ans }).Max();
             return ans + cond.SpentTime;
         }
 
@@ -440,11 +433,10 @@ namespace WindowsFormsApplication2
             return ans;
         }
 
-        public static void InitializeOutput(string flpth, PictureBox currentConditionBox, PictureBox nextConditionBox)
+        public static void InitializeOutput(string flpth, PictureBox currentConditionBox)
         {
             ReleaseStreamWriter = new StreamWriter(flpth);
             CurrentConditionBox = currentConditionBox;
-            NextConditionBox = nextConditionBox;
         }
     }
 
@@ -463,7 +455,8 @@ namespace WindowsFormsApplication2
         };
         private static Queue<Condition> _conditionQueue = null;
         private static Queue<bool> _isCurrentConditionQueue = null;
-        public static Queue<Condition> ConditionQueue {
+        public static Queue<Condition> ConditionQueue
+        {
             get { return _conditionQueue ?? (_conditionQueue = new Queue<Condition>()); }
             set
             {
@@ -486,17 +479,17 @@ namespace WindowsFormsApplication2
             int maxJobLength = 0;
             for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
                 maxJobLength = Math.Max(maxJobLength, Data.FileData.Jobs[i].FullTime);
-            float oneX = (float)box.Width/maxJobLength;
-            float oneY = (float)box.Height/Data.FileData.NumberOfJobs;
+            float oneX = (float)box.Width / maxJobLength;
+            float oneY = (float)box.Height / Data.FileData.NumberOfJobs;
             box.Refresh();
             Graphics g = box.CreateGraphics();
-            
+
             var pen1 = new Pen(Color.Black, 1F);
 
             for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
             {
                 int sum = 0;
-                for (int j = 0; j <condition.DoneInJob[i]; j++)
+                for (int j = 0; j < condition.DoneInJob[i]; j++)
                 {
                     var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
                     g.FillRectangle(new SolidBrush(ColorTranslator.FromHtml(ColourValues[Data.FileData.Jobs[i].OperationsArray[j]])), rect);
@@ -509,7 +502,7 @@ namespace WindowsFormsApplication2
                 for (int j = 0; j < Data.FileData.Jobs[i].Operations.Length; j++)
                 {
                     var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.FileData.Jobs[i].Operations[j].Duration, oneY);
-                    g.DrawRectangle(pen1, sum*oneX, i*oneY, oneX*Data.FileData.Jobs[i].Operations[j].Duration, oneY);
+                    g.DrawRectangle(pen1, sum * oneX, i * oneY, oneX * Data.FileData.Jobs[i].Operations[j].Duration, oneY);
                     sum += Data.FileData.Jobs[i].Operations[j].Duration;
 
                     var stringFormat = new StringFormat
@@ -518,7 +511,7 @@ namespace WindowsFormsApplication2
                         LineAlignment = StringAlignment.Center
                     };
 
-                    Font font1 = new Font("Arial",(int)(oneY/4));
+                    Font font1 = new Font("Arial", (int)(oneY / 4));
 
                     g.DrawString(Data.FileData.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
                 }
@@ -537,21 +530,13 @@ namespace WindowsFormsApplication2
             if (ConditionQueue.Count != 0)
             {
                 Condition condition = ConditionQueue.Dequeue();
-                if (IsCurrentConditionQueue.Dequeue())
-                {
-                    DrawCondition(condition,Form1.CurrentConditionBox);
-                    Form1.CurrentLowerBound.Text = condition.LowerBound.ToString();
-                    Form1.CurrentSpentTime.Text = condition.SpentTime.ToString();
-                }
-                else
-                {
-                    DrawCondition(condition, Form1.NextConditionBox);
-                    Form1.NextLowerBound.Text = condition.LowerBound.ToString();
-                    Form1.NextSpentTime.Text = condition.SpentTime.ToString();
-                    Form1.BestTime.Text = BestTime.ToString();
 
-                }
-                
+                DrawCondition(condition, Form1.CurrentConditionBox);
+                Form1.CurrentLowerBound.Text = condition.LowerBound.ToString();
+                Form1.CurrentSpentTime.Text = condition.SpentTime.ToString();
+                Form1.BestTime.Text = BestTime.ToString();
+
+
             }
         }
 
@@ -559,6 +544,6 @@ namespace WindowsFormsApplication2
 
     class InputException : Exception
     {
-        
+
     }
 }
