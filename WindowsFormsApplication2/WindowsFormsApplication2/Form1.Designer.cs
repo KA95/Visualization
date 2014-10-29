@@ -46,7 +46,9 @@
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.label8 = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -197,11 +199,20 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
+            // pictureBox2
+            // 
+            this.pictureBox2.Location = new System.Drawing.Point(6, 7);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(808, 535);
+            this.pictureBox2.TabIndex = 24;
+            this.pictureBox2.TabStop = false;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1203, 580);
+            this.Controls.Add(this.pictureBox2);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.label8);
             this.Controls.Add(this.richTextBox1);
@@ -220,6 +231,7 @@
             this.Name = "Form1";
             this.Text = "Form1";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -244,6 +256,7 @@
         private System.Windows.Forms.RichTextBox richTextBox1;
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.PictureBox pictureBox2;
     }
 }
 

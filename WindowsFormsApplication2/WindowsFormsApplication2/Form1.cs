@@ -15,12 +15,14 @@ namespace WindowsFormsApplication2
         public bool IsPaused { get; set; }
         public static PictureBox CurrentConditionBox { get; set; }
         public static TextBox CurrentSpentTime { get; set; }
+        public static PictureBox SearchTreeBox { get; set; }
         public static TextBox CurrentLowerBound { get; set; }
         public static TextBox BestTime { get; set; }
         public Form1()
         {
             InitializeComponent();
             CurrentConditionBox = pictureBox1;
+            SearchTreeBox = pictureBox2;
             CurrentSpentTime = currentSpentTime;
             CurrentLowerBound = currentLowerBound;
             BestTime = bestTime;
