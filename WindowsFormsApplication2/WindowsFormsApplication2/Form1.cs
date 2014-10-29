@@ -38,7 +38,7 @@ namespace WindowsFormsApplication2
                 {
                     Data.InitializeData(file);
                 }
-                catch (InputException exception)
+                catch (InputException)
                 {
 
                     MessageBox.Show("Input data error!");
@@ -57,7 +57,7 @@ namespace WindowsFormsApplication2
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            DrawingHelper.Draw();
+            DrawingHelper.DrawTree();
             if (IsPaused)
                 timer1.Enabled = false;
         }
@@ -119,7 +119,7 @@ namespace WindowsFormsApplication2
             {
                 Data.InitializeData(file);
             }
-            catch (InputException exception)
+            catch (InputException)
             {
                 MessageBox.Show("Input data error!");
                 return;
@@ -264,6 +264,8 @@ namespace WindowsFormsApplication2
 
         public static int GetAnswer(Data data)
         {
+            SearchTree.Initialize();
+
             if (data.NumberOfJobs == 0) return 0;
             #region init
 
@@ -301,7 +303,9 @@ namespace WindowsFormsApplication2
                     queue.Dequeue();
                     continue;
                 }
-                DrawingHelper.AddCondition(currentCondition, true);
+
+                int parent = SearchTree.Tree.GetConditionNumber(currentCondition);
+
                 var cur = currentCondition.DoneInJob;
                 used.Add(cur);
                 var variants = new List<int>[data.NumberOfMachines + 1]; //jobs for machine at this moment
@@ -339,7 +343,8 @@ namespace WindowsFormsApplication2
                     {
                         if (!used.Contains(cond.DoneInJob))//prone by repeating
                         {
-                            DrawingHelper.AddCondition(cond, false);
+                      
+                            SearchTree.Tree.AddCondition(parent,cond);
                             queue.Enqueue(cond);
                             used.Add(cond.DoneInJob);
                         }
@@ -474,8 +479,9 @@ namespace WindowsFormsApplication2
         }
 
         public static bool IsPaused = true;
-        public static void DrawCondition(Condition condition, PictureBox box)
+        public static void DrawCondition(Condition condition)
         {
+            PictureBox box = Form1.CurrentConditionBox;
             int maxJobLength = 0;
             for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
                 maxJobLength = Math.Max(maxJobLength, Data.FileData.Jobs[i].FullTime);
@@ -488,7 +494,7 @@ namespace WindowsFormsApplication2
 
             for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
             {
-                int sum = 0;
+               
                 for (int j = 0; j < condition.DoneInJob[i]; j++)
                 {
                     var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
@@ -519,31 +525,54 @@ namespace WindowsFormsApplication2
 
         }
 
-        public static void AddCondition(Condition condition, bool isCurrentCondition)
+        public static void DrawTree()
         {
-            ConditionQueue.Enqueue(condition);
-            IsCurrentConditionQueue.Enqueue(isCurrentCondition);
+            
         }
-
-        public static void Draw()
-        {
-            if (ConditionQueue.Count != 0)
-            {
-                Condition condition = ConditionQueue.Dequeue();
-
-                DrawCondition(condition, Form1.CurrentConditionBox);
-                Form1.CurrentLowerBound.Text = condition.LowerBound.ToString();
-                Form1.CurrentSpentTime.Text = condition.SpentTime.ToString();
-                Form1.BestTime.Text = BestTime.ToString();
-
-
-            }
-        }
-
     }
 
     class InputException : Exception
     {
+
+    }
+
+    class SearchTree
+    {
+        public static SearchTree Tree { get; set; }
+
+        private List<Condition> conditions;
+        private List<int> parent;
+        private List<List<int>> children;
+        private Dictionary<Condition, int> numberOfCondition;
+        private int depth;
+        public int Count { get; set; }
+        public static void Initialize()
+        {
+            Tree=new SearchTree();
+            Tree.conditions = new List<Condition>();
+            Tree.parent = new List<int>();
+            Tree.children = new List<List<int>>();
+            Tree.numberOfCondition = new Dictionary<Condition, int>();
+            Tree.depth = 0;
+            Tree.Count = 0;
+        }
+
+        public void AddCondition(int parent, Condition condition)
+        {
+            Tree.parent.Add(parent);
+            int n = Tree.conditions.Count;
+            Tree.children[parent].Add(n);
+            Tree.conditions.Add(condition);
+            Tree.numberOfCondition.Add(condition,n);
+            Tree.depth = Math.Max(Tree.depth, condition.SpentTime + 1);
+            Tree.Count++;
+        }
+
+        public int GetConditionNumber(Condition condition)
+        {
+            return numberOfCondition[condition];
+
+        }
 
     }
 }
