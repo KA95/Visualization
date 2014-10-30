@@ -288,7 +288,12 @@ namespace WindowsFormsApplication2
 
             var queue = new Queue<Condition>();
             var condition = new Condition(dj, dm, 0, Int32.MaxValue, 0);
+
+            ///////////////
             SearchTree.AddCondition(-1, condition);
+            SearchTree.SetType(0, (int)SearchTree.typeEnum.Unseen);
+            ////////////////////
+            /// 
             queue.Enqueue(condition);
             var bestUpperBound = Int32.MaxValue;
 
@@ -298,16 +303,20 @@ namespace WindowsFormsApplication2
             {
 
                 var currentCondition = queue.First();
+
+                int parent = SearchTree.GetConditionNumber(currentCondition);
+
                 if (currentCondition.LowerBound > bestUpperBound)
                 {
                     queue.Dequeue();
                     continue;
                 }
 
-                int parent = SearchTree.GetConditionNumber(currentCondition);
 
                 SearchTreeQueue.Push((int)SearchTree.typeEnum.Seen, currentCondition);
-
+                /////////////////
+                SearchTree.SetType(parent, (int)SearchTree.typeEnum.Seen);
+                //////////////////
                 var cur = currentCondition.DoneInJob;
                 used.Add(cur);
                 var variants = new List<int>[Data.NumberOfMachines + 1]; //jobs for machine at this moment
@@ -321,9 +330,14 @@ namespace WindowsFormsApplication2
                 var jobLists = Dfs(new Stack<int>(), variants, 0);
 
                 #region branching
+
                 foreach (var jobList in jobLists)
                 {
-                    var cond = new Condition { DoneInJob = (int[])cur.Clone(), DoneOnMachine = (int[])currentCondition.DoneOnMachine.Clone() };
+                    var cond = new Condition
+                    {
+                        DoneInJob = (int[])cur.Clone(),
+                        DoneOnMachine = (int[])currentCondition.DoneOnMachine.Clone()
+                    };
                     foreach (var job in jobList)
                     {
                         cond.DoneInJob[job]++;
@@ -341,23 +355,35 @@ namespace WindowsFormsApplication2
                         DrawingHelper.BestTime = bestUpperBound;
                     }
 
-
-                    if (!used.Contains(cond.DoneInJob) || cond.LowerBound <= bestUpperBound)//prone by repeating
+                    if (!used.Contains(cond.DoneInJob))
                     {
+                        if (cond.LowerBound <= bestUpperBound)
+                        {
 
-                        SearchTree.AddCondition(parent, cond);
+                            SearchTreeQueue.Push((int)SearchTree.typeEnum.Unseen, currentCondition, parent);
 
-                        SearchTreeQueue.Push((int)SearchTree.typeEnum.Unseen, currentCondition,parent);
-                        queue.Enqueue(cond);
-                        used.Add(cond.DoneInJob);
+                            ///////////////////////
+                            SearchTree.AddCondition(parent, cond);
+                            SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Unseen);
+                            ///////////////////////
+
+                            queue.Enqueue(cond);
+                            used.Add(cond.DoneInJob);
+                        }
+                        else
+                        {
+                            ////////////////////////
+                            SearchTree.AddCondition(parent, cond);
+                            SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Proned);
+                            ////////////////////////
+                            queue.Enqueue(cond);
+                            used.Add(cond.DoneInJob);
+                            SearchTreeQueue.Push((int)SearchTree.typeEnum.Proned, cond,parent);
+
+                            
+                        }
+
                     }
-                    else
-                    {
-
-                        SearchTreeQueue.Push((int)SearchTree.typeEnum.Proned, currentCondition);
-                    }
-
-
 
                     if (IsAnswer(cond, Data.Jobs))
                         return cond.SpentTime;
@@ -458,7 +484,7 @@ namespace WindowsFormsApplication2
     {
         public static int BestTime { get; set; }
         static readonly string[] ColourValues = new string[] { 
-        "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#000000", 
+        "#FFFF00", "#FF0000", "#0000FF", "#00FF00", "#FF00FF", "#00FFFF", "#000000", 
         "#800000", "#008000", "#000080", "#808000", "#800080", "#008080", "#808080", 
         "#C00000", "#00C000", "#0000C0", "#C0C000", "#C000C0", "#00C0C0", "#C0C0C0", 
         "#400000", "#004000", "#000040", "#404000", "#400040", "#004040", "#404040", 
@@ -536,55 +562,81 @@ namespace WindowsFormsApplication2
 
         public static void DrawTree()
         {
-            
+
             PictureBox box = Form1.SearchTreeBox;
+
             //int maxJobLength = 0;
             //for (int i = 0; i < Data.NumberOfJobs; i++)
             //    maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
 
+            int[] sumLayers = new int[SearchTree.Layers.Count];
+            float[] width = new float[SearchTree.Layers.Count];
+            sumLayers[0] = 1;
+
+            for (int i = 1; i < SearchTree.Layers.Count; i++)
+                sumLayers[i] = sumLayers[i - 1] + SearchTree.Layers[i];
+
             box.Refresh();
             Graphics g = box.CreateGraphics();
             float oneY = (float)box.Height / SearchTree.Layers.Count;
-            
+
             var pen1 = new Pen(Color.Black, 1F);
             for (int i = 0; i < SearchTree.Layers.Count; i++)
             {
                 float oneX = (float)box.Width / SearchTree.Layers[i];
-            
-                for (int j = 0; j < SearchTree.Layers[i]; j++)
-                    g.DrawRectangle(pen1, j*oneX, i*oneY, oneX, oneY);
+                width[i] = oneX;
             }
 
-            //for (int i = 0; i < Data.NumberOfJobs; i++)
-            //{
+            for (int i = SearchTree.Conditions.Count - 1; i > 0; i--)
+            {
+                int current = i;
+                int parent = SearchTree.Parent[i];
+                float cX1, cX2, cY1, cY2;
+                int c1, c2, r1, r2;
+                c1 = c2 = r1 = r2 = 0;
 
-            //    for (int j = 0; j < condition.DoneInJob[i]; j++)
-            //    {
-            //        var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
-            //        g.FillRectangle(new SolidBrush(ColorTranslator.FromHtml(ColourValues[Data.Jobs[i].OperationsArray[j]])), rect);
-            //    }
-            //}
+                for (int j = 0; j < SearchTree.Layers.Count; j++)
+                {
+                    if (current < sumLayers[j])
+                    {
+                        r1 = j;
+                        c1 = current - sumLayers[r1 - 1];
+                        break;
+                    }
+                }
+                if (parent != 0)
+                    for (int j = 0; j < SearchTree.Layers.Count; j++)
+                    {
+                        if (parent < sumLayers[j])
+                        {
+                            r2 = j;
+                            c2 = parent - sumLayers[r2 - 1];
+                            break;
+                        }
+                    }
 
-            //for (int i = 0; i < Data.NumberOfJobs; i++)
-            //{
-            //    int sum = 0;
-            //    for (int j = 0; j < Data.Jobs[i].Operations.Length; j++)
-            //    {
-            //        var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
-            //       
-            //        sum += Data.Jobs[i].Operations[j].Duration;
+                cX1 = c1 * width[r1] + width[r1] / 2;
+                cX2 = c2 * width[r2] + width[r2] / 2;
+                cY1 = r1 * oneY + oneY / 2;
+                cY2 = r2 * oneY + oneY / 2;
 
-            //        var stringFormat = new StringFormat
-            //        {
-            //            Alignment = StringAlignment.Center,
-            //            LineAlignment = StringAlignment.Center
-            //        };
+                g.DrawLine(pen1, cX1, cY1, cX2, cY2);
 
-            //        Font font1 = new Font("Arial", (int)(oneY / 4));
-
-            //        g.DrawString(Data.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
-            //    }
-            //}
+            }
+            int sum = 0;
+            for (int i = 0; i < SearchTree.Layers.Count; i++)
+            {
+                float oneX = width[i];
+                for (int j = 0; j < SearchTree.Layers[i]; j++)
+                {
+                    //   g.DrawRectangle(pen1, j * oneX, i * oneY, oneX, oneY);
+                    float cX = (j * oneX) + oneX / 2;
+                    float cY = (i * oneY) + oneY / 2;
+                    g.FillEllipse(new SolidBrush(ColorTranslator.FromHtml(ColourValues[SearchTree.Types[sum + j]])), cX - 4, cY - 4, 8, 8);
+                    g.DrawEllipse(pen1, cX - 4, cY - 4, 8, 8);
+                }
+                sum += SearchTree.Layers[i];
+            }
 
         }
     }
@@ -597,26 +649,31 @@ namespace WindowsFormsApplication2
     static class SearchTree
     {
 
-        private static List<Condition> conditions;
-        private static List<int> parent;
+        public static List<Condition> Conditions { get; set; }
+        public static List<int> Parent { get; set; }
+
         private static List<int> conditionLayer;
-       
+
         public static List<int> Layers { get; set; }
 
+        public static List<int> Types { get; set; }
+
         private static List<List<int>> children;
+
         private static Dictionary<Condition, int> numberOfCondition;
-        public enum typeEnum { Proned, Seen, Unseen };
+        public enum typeEnum { Unseen, Seen, Proned };
 
         private static int depth;
         private static int root;
         public static int Count { get; set; }
         public static void Initialize()
         {
-            conditionLayer = new List<int> {0};
+            Types = new List<int> { 0 };
+            conditionLayer = new List<int> { 0 };
             root = 0;
-            conditions = new List<Condition>();
-            parent = new List<int>();
-            Layers = new List<int> {0};
+            Conditions = new List<Condition>();
+            Parent = new List<int>();
+            Layers = new List<int> { 1 };
             children = new List<List<int>>();
             numberOfCondition = new Dictionary<Condition, int>();
             depth = 0;
@@ -625,8 +682,8 @@ namespace WindowsFormsApplication2
 
         public static void AddCondition(int parent1, Condition condition)
         {
-            parent.Add(parent1);
-            int n = conditions.Count;
+            Parent.Add(parent1);
+            int n = Conditions.Count;
 
             if (parent1 != -1)
             {
@@ -635,17 +692,25 @@ namespace WindowsFormsApplication2
 
                 children[parent1].Add(n);
 
-                while (Layers.Count <= conditionLayer[parent1]+1)
+                while (Layers.Count <= conditionLayer[parent1] + 1)
                     Layers.Add(0);
 
                 conditionLayer.Add(conditionLayer[parent1] + 1);
-                Layers[conditionLayer[parent1]+1]++;
+                Layers[conditionLayer[parent1] + 1]++;
             }
 
-            conditions.Add(condition);
+            Conditions.Add(condition);
             numberOfCondition.Add(condition, n);
             depth = Math.Max(depth, condition.SpentTime + 1);
             Count++;
+        }
+
+        public static void SetType(int v, int t)
+        {
+            while (Types.Count <= v)
+                Types.Add(0);
+            Types[v] = t;
+
         }
 
         public static int GetConditionNumber(Condition condition)
@@ -653,10 +718,6 @@ namespace WindowsFormsApplication2
             return numberOfCondition[condition];
         }
 
-        public static int GetNumberOfVertexes(int n)
-        {
-            return Layers[n];
-        }
 
     }
 
