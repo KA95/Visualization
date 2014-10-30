@@ -50,7 +50,7 @@ namespace WindowsFormsApplication2
                 Algorithm.InitializeOutput("output.txt", pictureBox1);
                 DrawingHelper.ConditionQueue.Clear();
                 DrawingHelper.IsCurrentConditionQueue.Clear();
-                int ans = Algorithm.GetAnswer(Data.FileData);
+                int ans = Algorithm.GetAnswer();
                 IsPaused = true;
                 timer1.Enabled = true;
                 Algorithm.WriteAnswer(ans);
@@ -129,37 +129,34 @@ namespace WindowsFormsApplication2
             Algorithm.InitializeOutput("output.txt", pictureBox1);
             DrawingHelper.ConditionQueue.Clear();
             DrawingHelper.IsCurrentConditionQueue.Clear();
-            int ans = Algorithm.GetAnswer(Data.FileData);
+            int ans = Algorithm.GetAnswer();
             IsPaused = true;
             timer1.Enabled = true;
             Algorithm.WriteAnswer(ans);
         }
 
     }
-    class Data
+    static class Data
     {
-        public static Data FileData { get; set; }
-        public int NumberOfJobs { get; set; }
-        public int NumberOfMachines { get; set; }
-        public Job[] Jobs { get; set; }
+        public static int NumberOfJobs { get; set; }
+        public static int NumberOfMachines { get; set; }
+        public static Job[] Jobs { get; set; }
 
         public static void InitializeData(string filePath)
         {
             var sr = new StreamReader(filePath);
             try
             {
-                var data = new Data();
                 var input = sr.ReadLine();
                 var nm = input.Split(' ');
-                data.NumberOfMachines = int.Parse(nm[0]);
-                data.NumberOfJobs = int.Parse(nm[1]);
-                data.Jobs = new Job[data.NumberOfJobs];
-                for (var i = 0; i < data.NumberOfJobs; i++)
+                NumberOfMachines = int.Parse(nm[0]);
+                NumberOfJobs = int.Parse(nm[1]);
+                Jobs = new Job[NumberOfJobs];
+                for (var i = 0; i < NumberOfJobs; i++)
                 {
                     var job = sr.ReadLine();
-                    data.Jobs[i] = new Job(job, data.NumberOfMachines);
+                    Jobs[i] = new Job(job, Data.NumberOfMachines);
                 }
-                FileData = data;
 
             }
             catch (Exception)
@@ -264,26 +261,26 @@ namespace WindowsFormsApplication2
             ReleaseStreamWriter.Close();
         }
 
-        public static int GetAnswer(Data data)
+        public static int GetAnswer()
         {
             SearchTree.Initialize();
 
-            if (data.NumberOfJobs == 0) return 0;
+            if (Data.NumberOfJobs == 0) return 0;
             #region init
 
-            var fullTimeOnMachine = new int[data.NumberOfMachines + 1];
+            var fullTimeOnMachine = new int[Data.NumberOfMachines + 1];
 
-            for (var i = 0; i < data.NumberOfJobs; i++)
-                for (var j = 0; j < data.Jobs[i].NumberOfOperations; j++)
-                    fullTimeOnMachine[data.Jobs[i].Operations[j].Machine] += data.Jobs[i].Operations[j].Duration;
+            for (var i = 0; i < Data.NumberOfJobs; i++)
+                for (var j = 0; j < Data.Jobs[i].NumberOfOperations; j++)
+                    fullTimeOnMachine[Data.Jobs[i].Operations[j].Machine] += Data.Jobs[i].Operations[j].Duration;
 
 
-            var dj = new int[data.NumberOfJobs];
-            for (var i = 0; i < data.NumberOfJobs; i++)
+            var dj = new int[Data.NumberOfJobs];
+            for (var i = 0; i < Data.NumberOfJobs; i++)
                 dj[i] = 0;
 
-            var dm = new int[data.NumberOfMachines + 1];
-            for (var i = 1; i <= data.NumberOfMachines; i++)
+            var dm = new int[Data.NumberOfMachines + 1];
+            for (var i = 1; i <= Data.NumberOfMachines; i++)
                 dm[i] = 0;
 
             #endregion
@@ -306,16 +303,16 @@ namespace WindowsFormsApplication2
                     continue;
                 }
 
-                int parent = SearchTree.Tree.GetConditionNumber(currentCondition);
+                int parent = SearchTree.GetConditionNumber(currentCondition);
 
                 var cur = currentCondition.DoneInJob;
                 used.Add(cur);
-                var variants = new List<int>[data.NumberOfMachines + 1]; //jobs for machine at this moment
-                for (int i = 0; i < data.NumberOfMachines + 1; i++) variants[i] = new List<int>();
-                for (var i = 0; i < data.NumberOfJobs; i++)
+                var variants = new List<int>[Data.NumberOfMachines + 1]; //jobs for machine at this moment
+                for (int i = 0; i < Data.NumberOfMachines + 1; i++) variants[i] = new List<int>();
+                for (var i = 0; i < Data.NumberOfJobs; i++)
                 {
-                    if (data.Jobs[i].FullTime > cur[i])
-                        variants[data.Jobs[i].OperationsArray[cur[i]]].Add(i);
+                    if (Data.Jobs[i].FullTime > cur[i])
+                        variants[Data.Jobs[i].OperationsArray[cur[i]]].Add(i);
                 }
 
                 var jobLists = Dfs(new Stack<int>(), variants, 0);
@@ -327,12 +324,12 @@ namespace WindowsFormsApplication2
                     foreach (var job in jobList)
                     {
                         cond.DoneInJob[job]++;
-                        cond.DoneOnMachine[data.Jobs[job].OperationsArray[cond.DoneInJob[job] - 1]]++;
+                        cond.DoneOnMachine[Data.Jobs[job].OperationsArray[cond.DoneInJob[job] - 1]]++;
                     }
                     cond.SpentTime = currentCondition.SpentTime + 1;
 
-                    cond.LowerBound = GetLowerBound(cond, data.Jobs, fullTimeOnMachine);
-                    var upperBound = GetUpperBound(cond, data.Jobs);
+                    cond.LowerBound = GetLowerBound(cond, Data.Jobs, fullTimeOnMachine);
+                    var upperBound = GetUpperBound(cond, Data.Jobs);
                     cond.UpperBound = upperBound;
 
                     if (upperBound < bestUpperBound)
@@ -346,14 +343,14 @@ namespace WindowsFormsApplication2
                         if (!used.Contains(cond.DoneInJob))//prone by repeating
                         {
                       
-                            SearchTree.Tree.AddCondition(parent,cond);
+                            SearchTree.AddCondition(parent,cond);
                             queue.Enqueue(cond);
                             used.Add(cond.DoneInJob);
                         }
 
                     }
 
-                    if (IsAnswer(cond, data.Jobs))
+                    if (IsAnswer(cond, Data.Jobs))
                         return cond.SpentTime;
 
                 }
@@ -485,33 +482,33 @@ namespace WindowsFormsApplication2
         {
             PictureBox box = Form1.CurrentConditionBox;
             int maxJobLength = 0;
-            for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
-                maxJobLength = Math.Max(maxJobLength, Data.FileData.Jobs[i].FullTime);
+            for (int i = 0; i < Data.NumberOfJobs; i++)
+                maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
             float oneX = (float)box.Width / maxJobLength;
-            float oneY = (float)box.Height / Data.FileData.NumberOfJobs;
+            float oneY = (float)box.Height / Data.NumberOfJobs;
             box.Refresh();
             Graphics g = box.CreateGraphics();
 
             var pen1 = new Pen(Color.Black, 1F);
 
-            for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
+            for (int i = 0; i < Data.NumberOfJobs; i++)
             {
                
                 for (int j = 0; j < condition.DoneInJob[i]; j++)
                 {
                     var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
-                    g.FillRectangle(new SolidBrush(ColorTranslator.FromHtml(ColourValues[Data.FileData.Jobs[i].OperationsArray[j]])), rect);
+                    g.FillRectangle(new SolidBrush(ColorTranslator.FromHtml(ColourValues[Data.Jobs[i].OperationsArray[j]])), rect);
                 }
             }
 
-            for (int i = 0; i < Data.FileData.NumberOfJobs; i++)
+            for (int i = 0; i < Data.NumberOfJobs; i++)
             {
                 int sum = 0;
-                for (int j = 0; j < Data.FileData.Jobs[i].Operations.Length; j++)
+                for (int j = 0; j < Data.Jobs[i].Operations.Length; j++)
                 {
-                    var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.FileData.Jobs[i].Operations[j].Duration, oneY);
-                    g.DrawRectangle(pen1, sum * oneX, i * oneY, oneX * Data.FileData.Jobs[i].Operations[j].Duration, oneY);
-                    sum += Data.FileData.Jobs[i].Operations[j].Duration;
+                    var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
+                    g.DrawRectangle(pen1, sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
+                    sum += Data.Jobs[i].Operations[j].Duration;
 
                     var stringFormat = new StringFormat
                     {
@@ -521,7 +518,7 @@ namespace WindowsFormsApplication2
 
                     Font font1 = new Font("Arial", (int)(oneY / 4));
 
-                    g.DrawString(Data.FileData.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
+                    g.DrawString(Data.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
                 }
             }
 
@@ -529,6 +526,47 @@ namespace WindowsFormsApplication2
 
         public static void DrawTree()
         {
+            //PictureBox box = Form1.CurrentConditionBox;
+            //int maxJobLength = 0;
+            //for (int i = 0; i < Data.NumberOfJobs; i++)
+            //    maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
+            //float oneX = (float)box.Width / maxJobLength;
+            //float oneY = (float)box.Height / Data.NumberOfJobs;
+            //box.Refresh();
+            //Graphics g = box.CreateGraphics();
+
+            //var pen1 = new Pen(Color.Black, 1F);
+
+            //for (int i = 0; i < Data.NumberOfJobs; i++)
+            //{
+
+            //    for (int j = 0; j < condition.DoneInJob[i]; j++)
+            //    {
+            //        var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
+            //        g.FillRectangle(new SolidBrush(ColorTranslator.FromHtml(ColourValues[Data.Jobs[i].OperationsArray[j]])), rect);
+            //    }
+            //}
+
+            //for (int i = 0; i < Data.NumberOfJobs; i++)
+            //{
+            //    int sum = 0;
+            //    for (int j = 0; j < Data.Jobs[i].Operations.Length; j++)
+            //    {
+            //        var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
+            //        g.DrawRectangle(pen1, sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
+            //        sum += Data.Jobs[i].Operations[j].Duration;
+
+            //        var stringFormat = new StringFormat
+            //        {
+            //            Alignment = StringAlignment.Center,
+            //            LineAlignment = StringAlignment.Center
+            //        };
+
+            //        Font font1 = new Font("Arial", (int)(oneY / 4));
+
+            //        g.DrawString(Data.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
+            //    }
+            //}
             
         }
     }
@@ -538,39 +576,39 @@ namespace WindowsFormsApplication2
 
     }
 
-    class SearchTree
+    static class SearchTree
     {
-        public static SearchTree Tree { get; set; }
 
-        private List<Condition> conditions;
-        private List<int> parent;
-        private List<List<int>> children;
-        private Dictionary<Condition, int> numberOfCondition;
-        private int depth;
-        public int Count { get; set; }
+        private static List<Condition> conditions;
+        private static List<int> parent;
+        private static List<List<int>> children;
+        private static Dictionary<Condition, int> numberOfCondition;
+        public enum typeEnum { Proned, Seen, Unseen };
+
+        private static int depth;
+        public static int Count { get; set; }
         public static void Initialize()
         {
-            Tree=new SearchTree();
-            Tree.conditions = new List<Condition>();
-            Tree.parent = new List<int>();
-            Tree.children = new List<List<int>>();
-            Tree.numberOfCondition = new Dictionary<Condition, int>();
-            Tree.depth = 0;
-            Tree.Count = 0;
+            conditions = new List<Condition>();
+            parent = new List<int>();
+            children = new List<List<int>>();
+            numberOfCondition = new Dictionary<Condition, int>();
+            depth = 0;
+            Count = 0;
         }
 
-        public void AddCondition(int parent, Condition condition)
+        public static void AddCondition(int parent1, Condition condition)
         {
-            Tree.parent.Add(parent);
-            int n = Tree.conditions.Count;
-            Tree.children[parent].Add(n);
-            Tree.conditions.Add(condition);
-            Tree.numberOfCondition.Add(condition,n);
-            Tree.depth = Math.Max(Tree.depth, condition.SpentTime + 1);
-            Tree.Count++;
+            parent.Add(parent1);
+            int n = conditions.Count;
+            children[parent1].Add(n);
+            conditions.Add(condition);
+            numberOfCondition.Add(condition,n);
+            depth = Math.Max(depth, condition.SpentTime + 1);
+            Count++;
         }
 
-        public int GetConditionNumber(Condition condition)
+        public static int GetConditionNumber(Condition condition)
         {
             return numberOfCondition[condition];
 
