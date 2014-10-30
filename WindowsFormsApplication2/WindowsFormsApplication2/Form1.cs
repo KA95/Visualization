@@ -288,7 +288,7 @@ namespace WindowsFormsApplication2
 
             var queue = new Queue<Condition>();
             var condition = new Condition(dj, dm, 0, Int32.MaxValue, 0);
-
+            SearchTree.AddCondition(-1, condition);
             queue.Enqueue(condition);
             var bestUpperBound = Int32.MaxValue;
 
@@ -542,15 +542,18 @@ namespace WindowsFormsApplication2
             //for (int i = 0; i < Data.NumberOfJobs; i++)
             //    maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
 
-            float oneX = (float)box.Width / SearchTree.Layers.Count;
-            float oneY = (float)box.Height / Data.NumberOfJobs;
-            for(int i=0;i<SearchTree.Layers.Count;i++)
-                for(int j=0;j<SearchTree.Layers[i];i++)
-
-            //box.Refresh();
-            //Graphics g = box.CreateGraphics();
-
-            //var pen1 = new Pen(Color.Black, 1F);
+            box.Refresh();
+            Graphics g = box.CreateGraphics();
+            float oneY = (float)box.Height / SearchTree.Layers.Count;
+            
+            var pen1 = new Pen(Color.Black, 1F);
+            for (int i = 0; i < SearchTree.Layers.Count; i++)
+            {
+                float oneX = (float)box.Width / SearchTree.Layers[i];
+            
+                for (int j = 0; j < SearchTree.Layers[i]; j++)
+                    g.DrawRectangle(pen1, j*oneX, i*oneY, oneX, oneY);
+            }
 
             //for (int i = 0; i < Data.NumberOfJobs; i++)
             //{
@@ -568,7 +571,7 @@ namespace WindowsFormsApplication2
             //    for (int j = 0; j < Data.Jobs[i].Operations.Length; j++)
             //    {
             //        var rect = new RectangleF(sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
-            //        g.DrawRectangle(pen1, sum * oneX, i * oneY, oneX * Data.Jobs[i].Operations[j].Duration, oneY);
+            //       
             //        sum += Data.Jobs[i].Operations[j].Duration;
 
             //        var stringFormat = new StringFormat
@@ -596,6 +599,8 @@ namespace WindowsFormsApplication2
 
         private static List<Condition> conditions;
         private static List<int> parent;
+        private static List<int> conditionLayer;
+       
         public static List<int> Layers { get; set; }
 
         private static List<List<int>> children;
@@ -603,12 +608,15 @@ namespace WindowsFormsApplication2
         public enum typeEnum { Proned, Seen, Unseen };
 
         private static int depth;
+        private static int root;
         public static int Count { get; set; }
         public static void Initialize()
         {
+            conditionLayer = new List<int> {0};
+            root = 0;
             conditions = new List<Condition>();
             parent = new List<int>();
-            Layers = new List<int>();
+            Layers = new List<int> {0};
             children = new List<List<int>>();
             numberOfCondition = new Dictionary<Condition, int>();
             depth = 0;
@@ -619,7 +627,21 @@ namespace WindowsFormsApplication2
         {
             parent.Add(parent1);
             int n = conditions.Count;
-            children[parent1].Add(n);
+
+            if (parent1 != -1)
+            {
+                while (children.Count <= parent1)
+                    children.Add(new List<int>());
+
+                children[parent1].Add(n);
+
+                while (Layers.Count <= conditionLayer[parent1]+1)
+                    Layers.Add(0);
+
+                conditionLayer.Add(conditionLayer[parent1] + 1);
+                Layers[conditionLayer[parent1]+1]++;
+            }
+
             conditions.Add(condition);
             numberOfCondition.Add(condition, n);
             depth = Math.Max(depth, condition.SpentTime + 1);
@@ -629,7 +651,6 @@ namespace WindowsFormsApplication2
         public static int GetConditionNumber(Condition condition)
         {
             return numberOfCondition[condition];
-
         }
 
         public static int GetNumberOfVertexes(int n)
