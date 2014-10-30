@@ -263,11 +263,12 @@ namespace WindowsFormsApplication2
 
         public static int GetAnswer()
         {
-            SearchTree.Initialize();
-
             if (Data.NumberOfJobs == 0) return 0;
+
             #region init
 
+            SearchTree.Initialize();
+            SearchTreeQueue.Initialize();
             var fullTimeOnMachine = new int[Data.NumberOfMachines + 1];
 
             for (var i = 0; i < Data.NumberOfJobs; i++)
@@ -305,6 +306,8 @@ namespace WindowsFormsApplication2
 
                 int parent = SearchTree.GetConditionNumber(currentCondition);
 
+                SearchTreeQueue.Push((int)SearchTree.typeEnum.Seen, currentCondition);
+
                 var cur = currentCondition.DoneInJob;
                 used.Add(cur);
                 var variants = new List<int>[Data.NumberOfMachines + 1]; //jobs for machine at this moment
@@ -338,17 +341,23 @@ namespace WindowsFormsApplication2
                         DrawingHelper.BestTime = bestUpperBound;
                     }
 
-                    if (cond.LowerBound <= bestUpperBound)//prone by record
-                    {
-                        if (!used.Contains(cond.DoneInJob))//prone by repeating
-                        {
-                      
-                            SearchTree.AddCondition(parent,cond);
-                            queue.Enqueue(cond);
-                            used.Add(cond.DoneInJob);
-                        }
 
+                    if (!used.Contains(cond.DoneInJob) || cond.LowerBound <= bestUpperBound)//prone by repeating
+                    {
+
+                        SearchTree.AddCondition(parent, cond);
+
+                        SearchTreeQueue.Push((int)SearchTree.typeEnum.Unseen, currentCondition,parent);
+                        queue.Enqueue(cond);
+                        used.Add(cond.DoneInJob);
                     }
+                    else
+                    {
+
+                        SearchTreeQueue.Push((int)SearchTree.typeEnum.Proned, currentCondition);
+                    }
+
+
 
                     if (IsAnswer(cond, Data.Jobs))
                         return cond.SpentTime;
@@ -357,6 +366,7 @@ namespace WindowsFormsApplication2
                 #endregion
                 queue.Dequeue();
             }
+
             int t = 0;
             return 1 / t;
         }
@@ -493,7 +503,7 @@ namespace WindowsFormsApplication2
 
             for (int i = 0; i < Data.NumberOfJobs; i++)
             {
-               
+
                 for (int j = 0; j < condition.DoneInJob[i]; j++)
                 {
                     var rect = new RectangleF(j * oneX, i * oneY, oneX, oneY);
@@ -526,12 +536,17 @@ namespace WindowsFormsApplication2
 
         public static void DrawTree()
         {
-            //PictureBox box = Form1.CurrentConditionBox;
+            
+            PictureBox box = Form1.SearchTreeBox;
             //int maxJobLength = 0;
             //for (int i = 0; i < Data.NumberOfJobs; i++)
             //    maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
-            //float oneX = (float)box.Width / maxJobLength;
-            //float oneY = (float)box.Height / Data.NumberOfJobs;
+
+            float oneX = (float)box.Width / SearchTree.Layers.Count;
+            float oneY = (float)box.Height / Data.NumberOfJobs;
+            for(int i=0;i<SearchTree.Layers.Count;i++)
+                for(int j=0;j<SearchTree.Layers[i];i++)
+
             //box.Refresh();
             //Graphics g = box.CreateGraphics();
 
@@ -567,7 +582,7 @@ namespace WindowsFormsApplication2
             //        g.DrawString(Data.Jobs[i].Operations[j].Machine.ToString(), font1, Brushes.Black, rect, stringFormat);
             //    }
             //}
-            
+
         }
     }
 
@@ -581,6 +596,8 @@ namespace WindowsFormsApplication2
 
         private static List<Condition> conditions;
         private static List<int> parent;
+        public static List<int> Layers { get; set; }
+
         private static List<List<int>> children;
         private static Dictionary<Condition, int> numberOfCondition;
         public enum typeEnum { Proned, Seen, Unseen };
@@ -591,6 +608,7 @@ namespace WindowsFormsApplication2
         {
             conditions = new List<Condition>();
             parent = new List<int>();
+            Layers = new List<int>();
             children = new List<List<int>>();
             numberOfCondition = new Dictionary<Condition, int>();
             depth = 0;
@@ -603,7 +621,7 @@ namespace WindowsFormsApplication2
             int n = conditions.Count;
             children[parent1].Add(n);
             conditions.Add(condition);
-            numberOfCondition.Add(condition,n);
+            numberOfCondition.Add(condition, n);
             depth = Math.Max(depth, condition.SpentTime + 1);
             Count++;
         }
@@ -612,6 +630,34 @@ namespace WindowsFormsApplication2
         {
             return numberOfCondition[condition];
 
+        }
+
+        public static int GetNumberOfVertexes(int n)
+        {
+            return Layers[n];
+        }
+
+    }
+
+    static class SearchTreeQueue
+    {
+        public enum typeEnum { Proned, Seen, Unseen };
+        public static Queue<Condition> Conditions { get; set; }
+        public static Queue<int> ConditionType { get; set; }
+        public static Queue<int> Parent { get; set; }
+
+        public static void Initialize()
+        {
+            Conditions = new Queue<Condition>();
+            ConditionType = new Queue<int>();
+            Parent = new Queue<int>();
+        }
+
+        public static void Push(int type, Condition condition, int parent = -1)
+        {
+            Conditions.Enqueue(condition);
+            ConditionType.Enqueue(type);
+            Parent.Enqueue(parent);
         }
 
     }
