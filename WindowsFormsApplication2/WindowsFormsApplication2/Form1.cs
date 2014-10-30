@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -60,6 +61,8 @@ namespace WindowsFormsApplication2
         private void timer1_Tick(object sender, EventArgs e)
         {
             DrawingHelper.DrawTree();
+            if(!SearchTreeQueue.NextStep()) timer1.Enabled=false;
+
             if (IsPaused)
                 timer1.Enabled = false;
         }
@@ -73,7 +76,7 @@ namespace WindowsFormsApplication2
 
         private void PlayBtn_Click(object sender, EventArgs e)
         {
-            timer1.Interval = 50;
+            timer1.Interval = 100;
             IsPaused = false;
             timer1.Enabled = true;
         }
@@ -133,6 +136,15 @@ namespace WindowsFormsApplication2
             IsPaused = true;
             timer1.Enabled = true;
             Algorithm.WriteAnswer(ans);
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            timer1.Enabled = false;
+            while (SearchTreeQueue.NextStep())
+            {
+            }
+            DrawingHelper.DrawTree();
         }
 
     }
@@ -219,7 +231,6 @@ namespace WindowsFormsApplication2
         public int Duration { get; set; }
         public int Machine { get; set; }
     }
-
     public class Condition : IComparable<Condition>, IComparer<Condition>
     {
         public Condition(int[] dj, int[] dm, int lb, int ub, int t)
@@ -291,9 +302,9 @@ namespace WindowsFormsApplication2
 
             ///////////////
             SearchTree.AddCondition(-1, condition);
+            SearchTree.SetConditionNumber(condition, 0);
             SearchTree.SetType(0, (int)SearchTree.typeEnum.Unseen);
             ////////////////////
-            /// 
             queue.Enqueue(condition);
             var bestUpperBound = Int32.MaxValue;
 
@@ -315,7 +326,7 @@ namespace WindowsFormsApplication2
 
                 SearchTreeQueue.Push((int)SearchTree.typeEnum.Seen, currentCondition);
                 /////////////////
-                SearchTree.SetType(parent, (int)SearchTree.typeEnum.Seen);
+                //SearchTree.SetType(parent, (int)SearchTree.typeEnum.Seen);
                 //////////////////
                 var cur = currentCondition.DoneInJob;
                 used.Add(cur);
@@ -360,11 +371,11 @@ namespace WindowsFormsApplication2
                         if (cond.LowerBound <= bestUpperBound)
                         {
 
-                            SearchTreeQueue.Push((int)SearchTree.typeEnum.Unseen, currentCondition, parent);
+                            SearchTreeQueue.Push((int)SearchTree.typeEnum.Unseen, cond, parent);
 
                             ///////////////////////
-                            SearchTree.AddCondition(parent, cond);
-                            SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Unseen);
+                            //SearchTree.AddCondition(parent, cond);
+                            //SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Unseen);
                             ///////////////////////
 
                             queue.Enqueue(cond);
@@ -373,8 +384,8 @@ namespace WindowsFormsApplication2
                         else
                         {
                             ////////////////////////
-                            SearchTree.AddCondition(parent, cond);
-                            SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Proned);
+                            //SearchTree.AddCondition(parent, cond);
+                            //SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Proned);
                             ////////////////////////
                             queue.Enqueue(cond);
                             used.Add(cond.DoneInJob);
@@ -479,7 +490,6 @@ namespace WindowsFormsApplication2
             CurrentConditionBox = currentConditionBox;
         }
     }
-
     class DrawingHelper
     {
         public static int BestTime { get; set; }
@@ -640,12 +650,10 @@ namespace WindowsFormsApplication2
 
         }
     }
-
     class InputException : Exception
     {
 
     }
-
     static class SearchTree
     {
 
@@ -666,6 +674,7 @@ namespace WindowsFormsApplication2
         private static int depth;
         private static int root;
         public static int Count { get; set; }
+
         public static void Initialize()
         {
             Types = new List<int> { 0 };
@@ -700,7 +709,6 @@ namespace WindowsFormsApplication2
             }
 
             Conditions.Add(condition);
-            numberOfCondition.Add(condition, n);
             depth = Math.Max(depth, condition.SpentTime + 1);
             Count++;
         }
@@ -717,10 +725,13 @@ namespace WindowsFormsApplication2
         {
             return numberOfCondition[condition];
         }
+        public static void SetConditionNumber(Condition condition,int n)
+        {
+            numberOfCondition.Add(condition, n);
+        }
 
 
     }
-
     static class SearchTreeQueue
     {
         public enum typeEnum { Proned, Seen, Unseen };
@@ -728,8 +739,10 @@ namespace WindowsFormsApplication2
         public static Queue<int> ConditionType { get; set; }
         public static Queue<int> Parent { get; set; }
 
+        private static int counter;
         public static void Initialize()
         {
+            counter = 1;
             Conditions = new Queue<Condition>();
             ConditionType = new Queue<int>();
             Parent = new Queue<int>();
@@ -737,9 +750,43 @@ namespace WindowsFormsApplication2
 
         public static void Push(int type, Condition condition, int parent = -1)
         {
+            if (type != (int) SearchTree.typeEnum.Seen)
+            {
+                SearchTree.SetConditionNumber(condition,counter);
+                counter++;
+            }
             Conditions.Enqueue(condition);
             ConditionType.Enqueue(type);
             Parent.Enqueue(parent);
+        }
+
+        public static bool NextStep()
+        {
+            if(Conditions.Count==0) return false;
+
+            Condition condition = Conditions.Dequeue();
+            int t = ConditionType.Dequeue();
+            int p = Parent.Dequeue();
+
+
+            if (t == (int)SearchTree.typeEnum.Seen)
+            {
+                int n = SearchTree.GetConditionNumber(condition);
+                SearchTree.SetType(n, (int)SearchTree.typeEnum.Seen);
+            }
+            else if (t == (int)SearchTree.typeEnum.Proned)
+            {
+                SearchTree.AddCondition(p, condition);
+                int n = SearchTree.GetConditionNumber(condition);
+                SearchTree.SetType(n, (int)SearchTree.typeEnum.Proned);
+            }
+            else if (t == (int) SearchTree.typeEnum.Unseen)
+            {
+                SearchTree.AddCondition(p, condition);
+                int n = SearchTree.GetConditionNumber(condition);
+                SearchTree.SetType(n, (int)SearchTree.typeEnum.Unseen);
+            }
+            return true;
         }
 
     }
