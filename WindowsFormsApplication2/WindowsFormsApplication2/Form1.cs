@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 
 namespace WindowsFormsApplication2
@@ -147,6 +148,13 @@ namespace WindowsFormsApplication2
             DrawingHelper.DrawTree();
         }
 
+        private void pictureBox2_Click(object sender, EventArgs e)
+        {
+            MouseEventArgs me = (MouseEventArgs)e;
+            Point coordinates = me.Location;
+            DrawingHelper.DrawCondition(DrawingHelper.GetConditionByCoordinates(coordinates.X,coordinates.Y));
+        }
+
     }
     static class Data
     {
@@ -265,6 +273,7 @@ namespace WindowsFormsApplication2
     {
         public static StreamWriter ReleaseStreamWriter { get; set; }
         public static PictureBox CurrentConditionBox { get; set; }
+        public static int Answer { get; set; }
 
         public static void WriteAnswer(int answer)
         {
@@ -397,7 +406,10 @@ namespace WindowsFormsApplication2
                     }
 
                     if (IsAnswer(cond, Data.Jobs))
+                    {
+                        Answer = cond.SpentTime;
                         return cond.SpentTime;
+                    }
 
                 }
                 #endregion
@@ -513,7 +525,6 @@ namespace WindowsFormsApplication2
                 _conditionQueue = value;
             }
         }
-
         public static Queue<bool> IsCurrentConditionQueue
         {
             get { return _isCurrentConditionQueue ?? (_isCurrentConditionQueue = new Queue<bool>()); }
@@ -522,11 +533,25 @@ namespace WindowsFormsApplication2
                 _isCurrentConditionQueue = value;
             }
         }
-
         public static bool IsPaused = true;
         public static void DrawCondition(Condition condition)
         {
             PictureBox box = Form1.CurrentConditionBox;
+
+
+            if (condition == null)
+            {
+                box.Refresh();
+                return;
+            }
+
+            Form1.BestTime.Text = Algorithm.Answer.ToString();
+            Form1.CurrentLowerBound.Text = condition.LowerBound.ToString();
+            Form1.CurrentSpentTime.Text = condition.SpentTime.ToString();
+
+            
+          
+
             int maxJobLength = 0;
             for (int i = 0; i < Data.NumberOfJobs; i++)
                 maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
@@ -570,14 +595,11 @@ namespace WindowsFormsApplication2
 
         }
 
+        private static List<PointF> ConditionPoints { get; set; }
+
         public static void DrawTree()
         {
-
             PictureBox box = Form1.SearchTreeBox;
-
-            //int maxJobLength = 0;
-            //for (int i = 0; i < Data.NumberOfJobs; i++)
-            //    maxJobLength = Math.Max(maxJobLength, Data.Jobs[i].FullTime);
 
             int[] sumLayers = new int[SearchTree.Layers.Count];
             float[] width = new float[SearchTree.Layers.Count];
@@ -597,7 +619,11 @@ namespace WindowsFormsApplication2
                 width[i] = oneX;
             }
 
-            for (int i = SearchTree.Conditions.Count - 1; i > 0; i--)
+
+            ConditionPoints = new List<PointF>();
+            ConditionPoints.Add( new PointF(width[0] / 2, oneY / 2));
+
+            for (int i = 1;  i<SearchTree.Conditions.Count;i++)
             {
                 int current = i;
                 int parent = SearchTree.Parent[i];
@@ -629,17 +655,16 @@ namespace WindowsFormsApplication2
                 cX2 = c2 * width[r2] + width[r2] / 2;
                 cY1 = r1 * oneY + oneY / 2;
                 cY2 = r2 * oneY + oneY / 2;
-
+                ConditionPoints.Add(new PointF(cX1,cY1));
                 g.DrawLine(pen1, cX1, cY1, cX2, cY2);
-
             }
+
             int sum = 0;
             for (int i = 0; i < SearchTree.Layers.Count; i++)
             {
                 float oneX = width[i];
                 for (int j = 0; j < SearchTree.Layers[i]; j++)
                 {
-                    //   g.DrawRectangle(pen1, j * oneX, i * oneY, oneX, oneY);
                     float cX = (j * oneX) + oneX / 2;
                     float cY = (i * oneY) + oneY / 2;
                     g.FillEllipse(new SolidBrush(ColorTranslator.FromHtml(ColourValues[SearchTree.Types[sum + j]])), cX - 4, cY - 4, 8, 8);
@@ -648,6 +673,21 @@ namespace WindowsFormsApplication2
                 sum += SearchTree.Layers[i];
             }
 
+        }
+        public static Condition GetConditionByCoordinates(int x, int y)
+        {
+            float fx = x;
+            float fy = y;
+
+            if (SearchTree.Conditions == null) return null;
+
+            for (int i = 0; i < SearchTree.Conditions.Count;i++)
+            {
+                if((fx-ConditionPoints[i].X)*(fx-ConditionPoints[i].X)+(fy-ConditionPoints[i].Y)*(fy-ConditionPoints[i].Y)<=8*8+1)
+                    return SearchTree.Conditions[i];
+            }
+
+            return null;
         }
     }
     class InputException : Exception
@@ -729,8 +769,6 @@ namespace WindowsFormsApplication2
         {
             numberOfCondition.Add(condition, n);
         }
-
-
     }
     static class SearchTreeQueue
     {
