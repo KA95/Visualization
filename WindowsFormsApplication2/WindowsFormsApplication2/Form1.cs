@@ -17,6 +17,7 @@ namespace WindowsFormsApplication2
         public bool IsPaused { get; set; }
         public static PictureBox CurrentConditionBox { get; set; }
         public static TextBox CurrentSpentTime { get; set; }
+        public static TextBox CurrentRecord { get; set; }
         public static PictureBox SearchTreeBox { get; set; }
         public static TextBox CurrentLowerBound { get; set; }
         public static TextBox BestTime { get; set; }
@@ -27,6 +28,7 @@ namespace WindowsFormsApplication2
             SearchTreeBox = pictureBox2;
             CurrentSpentTime = currentSpentTime;
             CurrentLowerBound = currentLowerBound;
+            CurrentRecord = currentRecordBox;
             BestTime = bestTime;
             IsPaused = true;
         }
@@ -308,6 +310,8 @@ namespace WindowsFormsApplication2
 
             var queue = new Queue<Condition>();
             var condition = new Condition(dj, dm, 0, Int32.MaxValue, 0);
+            condition.LowerBound = GetLowerBound(condition, Data.Jobs, fullTimeOnMachine);
+            condition.UpperBound = GetUpperBound(condition, Data.Jobs);
 
             ///////////////
             SearchTree.AddCondition(-1, condition);
@@ -384,7 +388,7 @@ namespace WindowsFormsApplication2
 
                             ///////////////////////
                             //SearchTree.AddCondition(parent, cond);
-                            //SearchTree.SetType(SearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Unseen);
+                            //SearchTree.SetType(SdearchTree.GetConditionNumber(cond), (int)SearchTree.typeEnum.Unseen);
                             ///////////////////////
 
                             queue.Enqueue(cond);
@@ -546,6 +550,7 @@ namespace WindowsFormsApplication2
             }
 
             Form1.BestTime.Text = Algorithm.Answer.ToString();
+            Form1.CurrentRecord.Text = condition.UpperBound.ToString();
             Form1.CurrentLowerBound.Text = condition.LowerBound.ToString();
             Form1.CurrentSpentTime.Text = condition.SpentTime.ToString();
 
